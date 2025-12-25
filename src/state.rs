@@ -5,7 +5,7 @@ use http::{HeaderMap, StatusCode};
 use moka::future::Cache;
 use reqwest::Client;
 
-use crate::{config::{ApiKeyStore, GatewayConfig, SecretsConfig}, features::{circuit_breaker::circuit_breaker::CircuitBreakerStore, rate_limiter::state::RateLimitState}};
+use crate::{config::{ApiKeyStore, GatewayConfig, SecretsConfig}, features::{circuit_breaker::circuit_breaker::CircuitBreakerStore, health_check::HealthCheckStore, rate_limiter::state::RateLimitState}};
 
 use tokio::sync::RwLock;
 
@@ -25,4 +25,5 @@ pub struct AppState {
     pub http_client: Client,
     pub prometheus_handle: Option<PrometheusHandle>,
     pub circuit_breaker_store: Arc<CircuitBreakerStore>,
+    pub health_store: Arc<HealthCheckStore>,
 }

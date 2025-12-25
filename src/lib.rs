@@ -133,16 +133,30 @@ pub async fn run(
         }
     });
 
+    let health_store = Arc::new(
+        crate::features::health_check::HealthCheckStore::new(),
+    );
+
+    let http_client = Client::new();
+
     let app_state = Arc::new(AppState {
         config: config.clone(),
         secrets,
         key_store: key_store.clone(),
         rate_limit_store: rate_limit_store,
         cache: response_cache,
-        http_client: Client::new(),
+        http_client: http_client.clone(),
         prometheus_handle,
         circuit_breaker_store,
+        health_store: health_store.clone(),
     });
+
+    // Start proactive health checks
+    crate::features::health_check::start_health_checks(
+        config.clone(),
+        health_store,
+        http_client,
+    ).await;
 
     // start hot reloader
     let config_for_spawn = config.clone();

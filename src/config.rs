@@ -82,17 +82,45 @@ pub struct RateLimitConfig{
 pub struct RouteConfig {
     pub name: String,
     pub path: String,
-    #[serde(default)] // Allow single destination for backward compatibility
+    #[serde(default)]
     pub destinations: Vec<String>,
-    #[serde(default = "default_destination")] // For backward compatibility
-    pub destination: String, // Single destination (deprecated, use destinations)
+    #[serde(default = "default_destination")]
+    pub destination: String,
     pub auth: Option<AuthConfig>,
     pub rate_limit: Option<RateLimitConfig>,
     pub cache: Option<CacheConfig>,
     pub circuit_breaker: Option<CircuitBreakerConfig>,
     #[serde(default)]
     pub load_balancing: LoadBalancingConfig,
+    #[serde(default)]
+    pub health_check: Option<HealthCheckConfig>,
 }
+
+/// Health check configuration for backend services
+#[derive(Debug, Deserialize, Clone)]
+pub struct HealthCheckConfig {
+    /// Health check endpoint path (e.g., "/health")
+    #[serde(default = "default_health_path")]
+    pub path: String,
+    /// Interval between health checks (e.g., "30s")
+    #[serde(default = "default_health_interval")]
+    pub interval: String,
+    /// Timeout for health check request (e.g., "5s")
+    #[serde(default = "default_health_timeout")]
+    pub timeout: String,
+    /// Number of failures before marking unhealthy
+    #[serde(default = "default_unhealthy_threshold")]
+    pub unhealthy_threshold: u32,
+    /// Number of successes before marking healthy
+    #[serde(default = "default_healthy_threshold")]
+    pub healthy_threshold: u32,
+}
+
+fn default_health_path() -> String { "/health".to_string() }
+fn default_health_interval() -> String { "30s".to_string() }
+fn default_health_timeout() -> String { "5s".to_string() }
+fn default_unhealthy_threshold() -> u32 { 3 }
+fn default_healthy_threshold() -> u32 { 2 }
 
 impl GatewayConfig {
     pub fn load<P: AsRef<Path>> (path: P) -> Result<Self,anyhow::Error> {
