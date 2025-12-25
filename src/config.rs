@@ -98,7 +98,88 @@ impl GatewayConfig {
     pub fn load<P: AsRef<Path>> (path: P) -> Result<Self,anyhow::Error> {
         let content = fs::read_to_string(path)?;
         let config: GatewayConfig = serde_yaml::from_str(&content)?;
+        
+        // Validate configuration
+        config.validate()?;
+        
         Ok(config)
+    }
+    
+    /// Validate the gateway configuration
+    pub fn validate(&self) -> Result<(), anyhow::Error> {
+        // Validate server configuration
+        if self.server.addr.is_empty() {
+            return Err(anyhow::anyhow!("Server address cannot be empty"));
+        }
+        
+        // Validate routes
+        if self.routes.is_empty() {
+            return Err(anyhow::anyhow!("At least one route must be configured"));
+        }
+        
+        let mut route_names = std::collections::HashSet::new();
+        let mut route_paths = std::collections::HashSet::new();
+        
+        for route in &self.routes {
+            // Validate route name uniqueness
+            if !route_names.insert(&route.name) {
+                return Err(anyhow::anyhow!("Duplicate route name: {}", route.name));
+            }
+            
+            // Validate route path uniqueness
+            if !route_paths.insert(&route.path) {
+                return Err(anyhow::anyhow!("Duplicate route path: {}", route.path));
+            }
+            
+            // Validate route name not empty
+            if route.name.trim().is_empty() {
+                return Err(anyhow::anyhow!("Route name cannot be empty"));
+            }
+            
+            // Validate route path not empty
+            if route.path.trim().is_empty() {
+                return Err(anyhow::anyhow!("Route path cannot be empty"));
+            }
+            
+            // Validate destinations
+            let has_destinations = !route.destinations.is_empty();
+            let has_single_destination = !route.destination.is_empty();
+            
+            if !has_destinations && !has_single_destination {
+                return Err(anyhow::anyhow!("Route '{}' must have either destinations or destination", route.name));
+            }
+            
+            if has_destinations && has_single_destination {
+                // Both specified, prefer destinations but warn about single destination
+                tracing::warn!("Route '{}' has both destinations and destination, using destinations", route.name);
+            }
+            
+            // Validate auth configuration if present
+            if let Some(auth) = &route.auth {
+                if auth.roles.is_some() && auth.roles.as_ref().unwrap().is_empty() {
+                    return Err(anyhow::anyhow!("Route '{}' has empty roles array", route.name));
+                }
+            }
+            
+            // Validate rate limit configuration if present
+            if let Some(rate_limit) = &route.rate_limit {
+                if rate_limit.requests == 0 {
+                    return Err(anyhow::anyhow!("Route '{}' has invalid rate limit requests: must be > 0", route.name));
+                }
+            }
+        }
+        
+        // Validate security configuration
+        if self.security.max_request_size == 0 {
+            return Err(anyhow::anyhow!("Max request size must be greater than 0"));
+        }
+        
+        // Validate API key store path
+        if self.identity.api_key_store_path.trim().is_empty() {
+            return Err(anyhow::anyhow!("API key store path cannot be empty"));
+        }
+        
+        Ok(())
     }
 
     pub fn find_route_for_path(&self, request_path: &str) -> Option<Arc<RouteConfig>> {
