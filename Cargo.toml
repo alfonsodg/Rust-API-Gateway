@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 tokio = { version = "1.47.0", features = ["full"] }
-axum = {version = "0.8.4", features = ["macros"]}
+axum = {version = "0.8.4", features = ["macros", "ws"]}
 serde = { version = "1.0.219", features = ["derive","rc"] }
 serde_yaml = "0.9.33"
 tracing = "0.1.41"
@@ -34,6 +34,7 @@ uuid = "1.17.0"
 tower-http ={ version="0.6.6", features = ["trace", "propagate-header"]}
 url = "2.5.2"
 chrono = { version = "0.4.38", features = ["serde"] }
+tokio-tungstenite = { version = "0.26", features = ["native-tls"] }
 
 [lib]
 name = "rustway"
