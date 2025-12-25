@@ -55,3 +55,10 @@ path = "tests/rate_limit.rs"
 [[test]]
 name = "auth_test"
 path = "tests/auth_test.rs"
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "gateway_bench"
+harness = false
