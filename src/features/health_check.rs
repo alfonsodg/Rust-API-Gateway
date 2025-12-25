@@ -96,8 +96,10 @@ pub async fn start_health_checks(
                 route.destinations.clone()
             };
 
-            let interval = parse_duration(&health_config.interval).unwrap_or(Duration::from_secs(30));
-            let timeout = parse_duration(&health_config.timeout).unwrap_or(Duration::from_secs(5));
+            let interval = parse_duration(&health_config.interval)
+                .unwrap_or(Duration::from_secs(crate::constants::health_check::DEFAULT_INTERVAL_SECONDS));
+            let timeout = parse_duration(&health_config.timeout)
+                .unwrap_or(Duration::from_secs(crate::constants::health_check::DEFAULT_TIMEOUT_SECONDS));
             let path = health_config.path.clone();
             let unhealthy_threshold = health_config.unhealthy_threshold;
             let healthy_threshold = health_config.healthy_threshold;

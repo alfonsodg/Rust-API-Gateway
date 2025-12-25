@@ -167,7 +167,7 @@ pub async fn proxy_handler(
         .headers(safe_headers)
         .body(body_bytes)
         .timeout(crate::utils::parse_duration(&route.timeout)
-            .unwrap_or(std::time::Duration::from_secs(30)))
+            .unwrap_or(std::time::Duration::from_secs(crate::constants::defaults::REQUEST_TIMEOUT_SECONDS)))
         .build()
         .map_err(|e|{
             log_error(&e, "request_building", "reqwest_build_error");

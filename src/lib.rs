@@ -122,7 +122,9 @@ pub async fn run(
     // Start periodic cleanup of circuit breakers to prevent memory leaks
     let cleanup_breaker_store = circuit_breaker_store.clone();
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(600)); // Every 10 minutes
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(
+            crate::constants::circuit_breaker::CLEANUP_INTERVAL_SECONDS
+        ));
         loop {
             interval.tick().await;
             cleanup_breaker_store.cleanup_expired_circuits();

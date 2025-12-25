@@ -20,6 +20,7 @@ pub mod rate_limiter {
 /// Circuit breaker configuration
 pub mod circuit_breaker {
     pub const DEFAULT_TTL_SECONDS: u64 = 3600; // 1 hour
+    pub const CLEANUP_INTERVAL_SECONDS: u64 = 600; // 10 minutes
 }
 
 /// Monitoring configuration
@@ -30,11 +31,19 @@ pub mod monitoring {
 /// Hot reload configuration
 pub mod hot_reload {
     pub const CHANNEL_BUFFER_SIZE: usize = 32;
+    pub const RETRY_DELAY_SECONDS: u64 = 1;
 }
 
 /// Default configuration values
 pub mod defaults {
     pub const MAX_BODY_SIZE: usize = 10 * 1024 * 1024; // 10MB
+    pub const REQUEST_TIMEOUT_SECONDS: u64 = 30;
+}
+
+/// Health check defaults
+pub mod health_check {
+    pub const DEFAULT_INTERVAL_SECONDS: u64 = 30;
+    pub const DEFAULT_TIMEOUT_SECONDS: u64 = 5;
 }
 
 /// Time conversion helpers
