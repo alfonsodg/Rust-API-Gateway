@@ -55,6 +55,20 @@ pub async fn run(
 
     let rate_limit_store: Arc<dyn RateLimitState> = Arc::new(InMemoryRateLimitState::new());
 
+    // Start periodic cleanup of rate limit buckets to prevent memory leaks
+    let cleanup_store = rate_limit_store.clone();
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(300)); // Every 5 minutes
+        loop {
+            interval.tick().await;
+            cleanup_store.cleanup_expired_buckets();
+            
+            // Log memory usage for monitoring
+            let bucket_count = cleanup_store.get_active_buckets_count();
+            tracing::debug!("Active rate limit buckets: {}", bucket_count);
+        }
+    });
+
     let (prometheus_layer, prometheus_handle) = {
         let config_guard = config.read().await;
         if config_guard.observability.metrics.enabled{
