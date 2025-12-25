@@ -58,6 +58,7 @@ path = "tests/auth_test.rs"
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
+tower = { version = "0.5", features = ["util"] }
 
 [[bench]]
 name = "gateway_bench"
