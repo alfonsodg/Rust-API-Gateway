@@ -2,7 +2,7 @@ use std::{sync::Arc, time::Instant};
 
 use axum::{extract::{Request, State}, middleware::Next, response::Response};
 
-use crate::{errors::AppError, features::circuit_breaker::circuit_breaker::{State as CircuitStateEnum}, middleware::rate_limiter::rate_limit::parse_duration, state::AppState, utils::logging::log_circuit_breaker_event};
+use crate::{errors::AppError, features::circuit_breaker::circuit_breaker::{State as CircuitStateEnum}, middleware::{get_route_config, rate_limiter::rate_limit::parse_duration}, state::AppState, utils::logging::log_circuit_breaker_event};
 
 
 pub async fn layer(
@@ -11,8 +11,7 @@ pub async fn layer(
     next: Next,
 ) -> Result<Response, AppError> {
 
-    let config_guard = state.config.read().await;
-    let route = match config_guard.find_route_for_path(req.uri().path()) {
+    let route = match get_route_config(&state, req.uri().path()).await {
         Some(r) => r,
         None => return Ok(next.run(req).await),
     };

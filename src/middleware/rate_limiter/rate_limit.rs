@@ -3,7 +3,7 @@ use std::{sync::Arc, time::Duration};
 use axum::{extract::{Request, State}, middleware::Next, response::Response};
 use axum_client_ip::ClientIp;
 
-use crate::{constants::time, constants::rate_limiter as rl_constants, errors::AppError, state::AppState, utils::logging::log_rate_limit_event};
+use crate::{constants::time, constants::rate_limiter as rl_constants, errors::AppError, middleware::get_route_config, state::AppState, utils::logging::log_rate_limit_event};
 
 
 pub async fn layer(
@@ -13,9 +13,7 @@ pub async fn layer(
     next: Next,
 ) -> Result<Response, AppError> {
     
-    let config_guard = state.config.read().await;
-    let route = config_guard
-        .find_route_for_path(req.uri().path());
+    let route = get_route_config(&state, req.uri().path()).await;
 
     if let Some(route_config) = route {
         if let Some(rate_limit_config) = route_config.rate_limit.as_ref() {

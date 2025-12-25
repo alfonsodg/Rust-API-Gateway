@@ -4,7 +4,7 @@ use axum::{body::Body, extract::{State}, middleware::Next, response::Response};
 use http::Request;
 use http_body_util::BodyExt;
 
-use crate::{constants::cache as cache_constants, errors::AppError, middleware::rate_limiter::rate_limit::parse_duration, state::{AppState, CachedResponse}, utils::logging::log_cache_operation};
+use crate::{constants::cache as cache_constants, errors::AppError, middleware::{get_route_config, rate_limiter::rate_limit::parse_duration}, state::{AppState, CachedResponse}, utils::logging::log_cache_operation};
 
 /// Sanitize cache key to prevent cache poisoning attacks
 fn sanitize_cache_key(uri: &str) -> String {
@@ -43,11 +43,9 @@ pub async fn layer(
     next: Next
 ) -> Result<Response, AppError> {
  
-    let config_guard = state.config.read().await;
+    let route = get_route_config(&state, req.uri().path()).await;
 
-    let route = config_guard.find_route_for_path(req.uri().path());
-
-    let cache_config = match route.and_then(|r| r.cache.as_ref().map(|c| c.clone())) {
+    let cache_config = match route.and_then(|r| r.cache.as_ref().cloned()) {
         Some(c) => c,
         None => return Ok(next.run(req).await),
     };
@@ -57,7 +55,7 @@ pub async fn layer(
     }
 
     let cache_key = sanitize_cache_key(&req.uri().to_string());
-    let ttl = parse_duration(&cache_config.ttl).unwrap_or_else(|_| Duration::MAX); // item will be explicitly removed by cache algo
+    let ttl = parse_duration(&cache_config.ttl).unwrap_or_else(|_| Duration::MAX);
 
 
     //1. check if a valid response is already in the cache.
