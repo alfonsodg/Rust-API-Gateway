@@ -6,6 +6,7 @@ pub mod proxy;
 pub mod middleware;
 pub mod features;
 pub mod utils;
+pub mod plugins;
 
 
 use std::{net::SocketAddr, path::PathBuf, sync::Arc,};
@@ -70,6 +71,8 @@ pub async fn run(
         CircuitBreakerStore::new(),
     );
 
+    let plugin_registry = Arc::new(plugins::PluginRegistry::new());
+
     let app_state = Arc::new(AppState {
         config: config.clone(),
         secrets,
@@ -79,6 +82,7 @@ pub async fn run(
         http_client: Client::new(),
         prometheus_handle,
         circuit_breaker_store,
+        plugin_registry,
     });
 
     // start hot reloader
