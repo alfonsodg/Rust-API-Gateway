@@ -15,7 +15,8 @@ fn generate_jwt(roles: Vec<&str>) -> String {
         "roles": roles,
         "exp": SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() + 3600,
     });
-    let secret = "a-very-long-and-random-string-that-is-hard-to-guess";
+    // Use the same secret as configured in .env
+    let secret = "super-secret-jwt-key-for-testing-only";
     encode(&Header::default(), &claims, &EncodingKey::from_secret(secret.as_ref())).unwrap()
 }
 
@@ -44,10 +45,10 @@ async fn test_all_gateway_features() -> Result<()> {
     let res = client.get(format!("{}/test/apikey", base_url)).header("Authorization", "Bearer user-key-for-alice").send().await?;
     assert_eq!(res.status(), 200);
     println!("API Key Auth: Success -> OK");
-    // JWT - Failure (wrong role)
+    // JWT - Failure (insufficient role)
     let user_jwt = generate_jwt(vec!["user"]);
     let res = client.get(format!("{}/test/jwt", base_url)).header("Authorization", format!("Bearer {}", user_jwt)).send().await?;
-    assert_eq!(res.status(), 403); // Forbidden
+    assert_eq!(res.status(), 403); // Forbidden - insufficient permissions
     println!("JWT Auth: Wrong Role -> OK");
     // JWT - Success
     let admin_jwt = generate_jwt(vec!["admin"]);
