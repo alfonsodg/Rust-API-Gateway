@@ -49,9 +49,24 @@ pub async fn run(
 
     let cache: Arc<Cache<String, Arc<CachedResponse>>> = Arc::new(
         Cache::builder()
-            .max_capacity(10_000) // Default 5 minute TTL
+            .max_capacity(10_000) // Maximum entries
+            .time_to_live(std::time::Duration::from_secs(300)) // 5 minute TTL
+            .time_to_idle(std::time::Duration::from_secs(180)) // 3 minute idle timeout
             .build(),
     );
+
+    // Add cache monitoring to track eviction effectiveness
+    let cache_clone = cache.clone();
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(60)); // Every minute
+        loop {
+            interval.tick().await;
+            let cache_size = cache_clone.weighted_size();
+            // Use iter_count() to get number of entries
+            let cache_entries = cache_clone.iter().count();
+            tracing::debug!("Cache status: {} entries, {} bytes", cache_entries, cache_size);
+        }
+    });
 
     let rate_limit_store: Arc<dyn RateLimitState> = Arc::new(InMemoryRateLimitState::new());
 
