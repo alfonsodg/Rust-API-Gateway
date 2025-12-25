@@ -3,6 +3,9 @@ use reqwest::Client;
 use std::sync::Arc;
 use tokio::time::{Duration, sleep};
 
+mod common;
+use common::get_test_jwt_secret;
+
 #[tokio::test]
 async fn test_concurrent_auth_requests() -> Result<()> {
     let client = Arc::new(Client::new());
@@ -365,6 +368,6 @@ fn generate_jwt(roles: Vec<&str>) -> String {
         "exp": SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() + 3600,
     });
     
-    let secret = "super-secret-jwt-key-for-testing-only";
+    let secret = get_test_jwt_secret();
     encode(&Header::default(), &claims, &EncodingKey::from_secret(secret.as_ref())).unwrap()
 }

@@ -17,6 +17,7 @@ use moka::future::Cache;
 use reqwest::Client;
 use tokio::{net::TcpListener, sync::RwLock};
 use tracing::{info, error, Level};
+use crate::utils::logging::*;
 
 use crate::{config::{ApiKeyStore, GatewayConfig, SecretsConfig}, features::{circuit_breaker::circuit_breaker::CircuitBreakerStore, rate_limiter::state::{InMemoryRateLimitState, RateLimitState}}, utils::hot_reload};
 use crate::state::{AppState, CachedResponse};
@@ -32,18 +33,19 @@ pub async fn run(
     .with_max_level(Level::INFO)
     .init();
 
-    info!("Loading secrets...");
+    log_startup("secrets", "loading", None);
     let secrets = Arc::new(SecretsConfig::from_env()?);
+    log_startup("secrets", "loaded", None);
 
-    info!("Loading gateway configuration...");
+    log_startup("configuration", "loading", None);
     let config = Arc::new(RwLock::new(GatewayConfig::load(
         config_path.clone(),
     )?));
-    info!("Configuration loaded successfully.");
+    log_startup("configuration", "loaded", None);
 
     let key_store_path   = config.read().await.identity.api_key_store_path.clone(); 
     
-    info!(path = ?key_store_path, "Loading API key store...");
+    log_info("Loading API key store", "startup", "api_key_store_loading");
 
     let key_store = Arc::new(RwLock::new(ApiKeyStore::load(&key_store_path)?));
 
@@ -64,7 +66,7 @@ pub async fn run(
             let cache_size = cache_clone.weighted_size();
             // Use iter_count() to get number of entries
             let cache_entries = cache_clone.iter().count();
-            tracing::debug!("Cache status: {} entries, {} bytes", cache_entries, cache_size);
+            log_performance_metric("cache_entries", cache_entries as f64, "count", "monitoring");
         }
     });
 
@@ -80,7 +82,7 @@ pub async fn run(
             
             // Log memory usage for monitoring
             let bucket_count = cleanup_store.get_active_buckets_count();
-            tracing::debug!("Active rate limit buckets: {}", bucket_count);
+            log_performance_metric("rate_limit_buckets", bucket_count as f64, "count", "cleanup");
         }
     });
 
@@ -109,7 +111,7 @@ pub async fn run(
             
             // Log memory usage for monitoring
             let breaker_count = cleanup_breaker_store.get_active_circuits_count();
-            tracing::debug!("Active circuit breakers: {}", breaker_count);
+            log_performance_metric("circuit_breakers", breaker_count as f64, "count", "cleanup");
         }
     });
 

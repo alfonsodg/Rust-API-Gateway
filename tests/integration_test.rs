@@ -7,6 +7,10 @@ use std::process::{Child, Command};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::time::sleep;
 
+/// Test JWT secret - loaded from environment or uses test default
+fn get_test_jwt_secret() -> String {
+    std::env::var("JWT_SECRET").unwrap_or_else(|_| "super-secret-jwt-key-for-testing-only".to_string())
+}
 
 // Helper to generate a valid JWT for testing
 fn generate_jwt(roles: Vec<&str>) -> String {
@@ -15,8 +19,7 @@ fn generate_jwt(roles: Vec<&str>) -> String {
         "roles": roles,
         "exp": SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() + 3600,
     });
-    // Use the same secret as configured in .env
-    let secret = "super-secret-jwt-key-for-testing-only";
+    let secret = get_test_jwt_secret();
     encode(&Header::default(), &claims, &EncodingKey::from_secret(secret.as_ref())).unwrap()
 }
 

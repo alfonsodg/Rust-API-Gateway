@@ -3,6 +3,9 @@ use reqwest::Client;
 use std::time::Duration;
 use tokio::time::Instant;
 
+mod common;
+use common::get_test_jwt_secret;
+
 // Simple performance tests without external benchmarking framework
 
 #[tokio::test]
@@ -239,6 +242,6 @@ fn generate_jwt(roles: Vec<&str>) -> String {
         "exp": SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() + 3600,
     });
     
-    let secret = "super-secret-jwt-key-for-testing-only";
+    let secret = get_test_jwt_secret();
     encode(&Header::default(), &claims, &EncodingKey::from_secret(secret.as_ref())).unwrap()
 }

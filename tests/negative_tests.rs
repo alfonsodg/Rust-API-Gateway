@@ -3,6 +3,9 @@ use reqwest::Client;
 use std::time::Duration;
 use tokio::time::sleep;
 
+mod common;
+use common::get_test_jwt_secret;
+
 #[tokio::test]
 async fn test_invalid_jwt_token() -> Result<()> {
     let client = Client::new();
@@ -79,7 +82,7 @@ async fn test_expired_jwt_token() -> Result<()> {
         "exp": expired_timestamp,
     });
     
-    let secret = "super-secret-jwt-key-for-testing-only";
+    let secret = get_test_jwt_secret();
     let token = encode(&Header::default(), &claims, &EncodingKey::from_secret(secret.as_ref()))?;
     
     let res = client

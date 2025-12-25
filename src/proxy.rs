@@ -6,7 +6,7 @@ use bytes::Bytes;
 use std::sync::Arc;
 use url::Url;
 
-use crate::{app::REQUEST_ID_HEADER, errors::AppError, state::AppState};
+use crate::{app::REQUEST_ID_HEADER, errors::AppError, state::AppState, utils::logging::*};
 
 /// Select destination using load balancing strategy
 fn select_destination(route: &crate::config::RouteConfig, request_id: &str) -> Result<String, AppError> {
@@ -123,7 +123,8 @@ pub async fn proxy_handler(
     let allowed_domains = &config_guard.security.allowed_domains;
     validate_destination_url(&destination_url, allowed_domains)
         .map_err(|e| {
-            tracing::error!("SSRF protection: URL validation failed for {}: {}", destination_url, e);
+            log_security_event("SSRF protection failure", "gateway", 
+                &format!("URL validation failed for {}: {}", destination_url, e), "high");
             e
         })?;
 
@@ -140,7 +141,7 @@ pub async fn proxy_handler(
     // Check request size limits to prevent DoS attacks
     let body_bytes: Bytes = body.collect().await
         .map_err(|e| {
-        tracing::error!("Failed to read request body: {}", e);
+        log_error(&e, "request_body_parsing", "body_collect_error");
         AppError::InternalServerError
         })?
         .to_bytes();
@@ -148,7 +149,8 @@ pub async fn proxy_handler(
     // Validate request size against configured limits
     let max_size = config_guard.security.max_request_size;
     if body_bytes.len() > max_size {
-        tracing::error!("Request size {} bytes exceeds limit {} bytes", body_bytes.len(), max_size);
+        log_security_event("Request size exceeded", "gateway", 
+            &format!("Request size {} bytes exceeds limit {} bytes", body_bytes.len(), max_size), "medium");
         return Err(AppError::InvalidDestination("Request too large".to_string()));
     }
 
@@ -158,7 +160,7 @@ pub async fn proxy_handler(
         .body(body_bytes)
         .build()
         .map_err(|e|{
-            tracing::error!("Failed to build reqwest request: {}", e);
+            log_error(&e, "request_building", "reqwest_build_error");
             AppError::InvalidDestination(destination_url)
         })?;
 
