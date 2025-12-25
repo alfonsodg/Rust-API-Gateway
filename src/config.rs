@@ -43,6 +43,22 @@ fn default_max_request_size() -> usize {
     10 * 1024 * 1024 // 10MB default
 }
 
+fn default_destination() -> String {
+    String::new()
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct LoadBalancingConfig {
+    #[serde(default = "default_strategy")]
+    pub strategy: String, // "round_robin", "random", "least_connections"
+    #[serde(default)]
+    pub enabled: bool,
+}
+
+fn default_strategy() -> String {
+    "round_robin".to_string()
+}
+
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 pub enum AuthType {
     Jwt,
@@ -66,11 +82,16 @@ pub struct RateLimitConfig{
 pub struct RouteConfig {
     pub name: String,
     pub path: String,
-    pub destination: String,
+    #[serde(default)] // Allow single destination for backward compatibility
+    pub destinations: Vec<String>,
+    #[serde(default = "default_destination")] // For backward compatibility
+    pub destination: String, // Single destination (deprecated, use destinations)
     pub auth: Option<AuthConfig>,
     pub rate_limit: Option<RateLimitConfig>,
     pub cache: Option<CacheConfig>,
     pub circuit_breaker: Option<CircuitBreakerConfig>,
+    #[serde(default)]
+    pub load_balancing: LoadBalancingConfig,
 }
 
 impl GatewayConfig {

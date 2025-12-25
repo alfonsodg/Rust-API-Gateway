@@ -18,10 +18,15 @@ security:
   max_request_size: 10485760  # 10MB in bytes
 
 routes:
-  # 1. A simple public route
+  # 1. A simple public route with load balancing
   - name: "public_route"
     path: "/test/public"
-    destination: "http://127.0.0.1:8000/public"
+    destinations:
+      - "http://127.0.0.1:8000/public"
+      - "http://127.0.0.1:8001/public"
+    load_balancing:
+      strategy: "round_robin"
+      enabled: true
 
   # 2. A route for testing API Key auth
   - name: "apikey_route"

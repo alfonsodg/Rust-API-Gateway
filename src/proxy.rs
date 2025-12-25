@@ -8,6 +8,29 @@ use url::Url;
 
 use crate::{app::REQUEST_ID_HEADER, errors::AppError, state::AppState};
 
+/// Select destination using load balancing strategy
+fn select_destination(route: &crate::config::RouteConfig, request_id: &str) -> Result<String, AppError> {
+    let destinations = &route.destinations;
+    
+    // For backward compatibility, if no destinations specified, use single destination
+    if destinations.is_empty() && !route.destination.is_empty() {
+        return Ok(route.destination.clone());
+    }
+    
+    if destinations.is_empty() {
+        return Err(AppError::InvalidDestination("No destinations configured".to_string()));
+    }
+    
+    // Simple round-robin based on request_id hash
+    if destinations.len() == 1 {
+        return Ok(destinations[0].clone());
+    }
+    
+    let hash = request_id.chars().map(|c| c as usize).sum::<usize>();
+    let selected_index = hash % destinations.len();
+    Ok(destinations[selected_index].clone())
+}
+
 /// Filter headers to prevent injection attacks - only allow safe headers
 fn filter_safe_headers(headers: &HeaderMap) -> HeaderMap {
     let mut safe_headers = HeaderMap::new();
@@ -92,7 +115,9 @@ pub async fn proxy_handler(
 
     let destination_path = request_path.strip_prefix(&route.path).unwrap_or("");
     
-    let destination_url = format!("{}{}", route.destination, destination_path);
+    // Use load balancing to select destination
+    let selected_destination = select_destination(&route, &request_id)?;
+    let destination_url = format!("{}{}", selected_destination, destination_path);
 
     // Validate URL to prevent SSRF attacks
     let allowed_domains = &config_guard.security.allowed_domains;
