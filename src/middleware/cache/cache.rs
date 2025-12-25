@@ -7,6 +7,37 @@ use tracing::info;
 
 use crate::{errors::AppError, middleware::rate_limiter::rate_limit::parse_duration, state::{AppState, CachedResponse}};
 
+/// Sanitize cache key to prevent cache poisoning attacks
+fn sanitize_cache_key(uri: &str) -> String {
+    // Remove potentially dangerous characters and normalize the key
+    let sanitized = uri
+        .chars()
+        .map(|c| match c {
+            '/' => '_',  // Replace slashes with underscores
+            '?' => '_',  // Replace query parameters
+            '#' => '_',  // Replace fragments
+            ' ' => '_',   // Replace spaces
+            '\t' => '_',  // Replace tabs
+            '\n' => '_',  // Replace newlines
+            '\r' => '_',  // Replace carriage returns
+            '&' => '_',   // Replace ampersands
+            '=' => '_',   // Replace equals signs
+            '+' => '_',   // Replace plus signs
+            '%' => '_',   // Replace percent signs (potential encoding attacks)
+            '<' | '>' | '"' | '\'' | '\\' | '|' | ';' | ':' | ',' | '.' | '[' | ']' | '{' | '}' | '(' | ')' => '_',
+            _ if c.is_control() => '_',  // Replace control characters
+            _ => c,  // Keep safe characters
+        })
+        .collect::<String>();
+    
+    // Limit length to prevent excessive memory usage
+    if sanitized.len() > 512 {
+        format!("{}_truncated", &sanitized[..508])
+    } else {
+        sanitized
+    }
+}
+
 pub async fn layer(
     State(state): State<Arc<AppState>>,
     req: Request<Body>,
@@ -26,7 +57,7 @@ pub async fn layer(
         return Ok(next.run(req).await);
     }
 
-    let cache_key = req.uri().to_string();
+    let cache_key = sanitize_cache_key(&req.uri().to_string());
     let ttl = parse_duration(&cache_config.ttl).unwrap_or_else(|_| Duration::MAX); // item will be explicitly removed by cache algo
 
 
