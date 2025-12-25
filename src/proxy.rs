@@ -8,6 +8,33 @@ use url::Url;
 
 use crate::{app::REQUEST_ID_HEADER, errors::AppError, state::AppState};
 
+/// Filter headers to prevent injection attacks - only allow safe headers
+fn filter_safe_headers(headers: &HeaderMap) -> HeaderMap {
+    let mut safe_headers = HeaderMap::new();
+    
+    // Whitelist of safe headers that can be propagated
+    let safe_headers_list = [
+        "content-type",
+        "content-length", 
+        "accept",
+        "accept-encoding",
+        "user-agent",
+        "host",
+        "connection",
+        "cache-control",
+    ];
+    
+    for (name, value) in headers {
+        let name_str = name.as_str();
+        let name_lowercase = name_str.to_lowercase();
+        if safe_headers_list.contains(&name_lowercase.as_str()) {
+            safe_headers.insert(name, value.clone());
+        }
+    }
+    
+    safe_headers
+}
+
 /// Validate URL against allowed domains to prevent SSRF attacks
 fn validate_destination_url(url: &str, allowed_domains: &[String]) -> Result<(), AppError> {
     let parsed_url = Url::parse(url).map_err(|_| {
@@ -82,6 +109,9 @@ pub async fn proxy_handler(
         HeaderValue::from_str(&request_id).unwrap(),
     );
 
+    // Filter headers to prevent injection attacks
+    let safe_headers = filter_safe_headers(&headers);
+
     let body_bytes: Bytes = body.collect().await
         .map_err(|e| {
         tracing::error!("Failed to read request body: {}", e);
@@ -91,7 +121,7 @@ pub async fn proxy_handler(
 
     let request = state.http_client
         .request(method, &destination_url)
-        .headers(headers)
+        .headers(safe_headers) // Use filtered headers only
         .body(body_bytes)
         .build()
         .map_err(|e|{
