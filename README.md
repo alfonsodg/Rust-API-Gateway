@@ -216,18 +216,24 @@ graph TB
 
 | Metric | Value |
 |--------|-------|
-| **Throughput** | 10,000+ req/sec |
-| **Latency** | < 1ms overhead |
+| **Throughput** | 20,000+ req/sec |
+| **Latency** | 4.59ms average |
 | **Memory** | ~10MB footprint |
 | **Binary Size** | 8.5MB optimized |
 | **Startup Time** | < 100ms |
 
-### Benchmarks
+### Production Benchmarks
+
+RustyGW has been tested under real production conditions. See [PERFORMANCE.md](PERFORMANCE.md) for detailed benchmark results including:
+
+- **21,989 RPS** under moderate load (4 threads, 100 connections)
+- **20,550 RPS** under extreme load (8 threads, 200 connections)  
+- **Sub-10ms latency** maintained under sustained load
+- **71.88MB/s throughput** with consistent performance
+
 ```bash
-# Route matching: 65M+ ops/sec
-# Rate limiting: 1.6G+ ops/sec  
-# Cache operations: High performance
-cargo bench
+# Run your own benchmarks
+wrk -t4 -c100 -d30s http://localhost:8094/metrics
 ```
 
 ---
