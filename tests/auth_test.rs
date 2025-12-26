@@ -10,10 +10,10 @@ routes: []
 identity:
   api_key_store_path: "./api_keys.yaml"
 "#;
-    
+
     let config: Result<GatewayConfig, _> = serde_yaml::from_str(config_str);
     assert!(config.is_ok());
-    
+
     let config = config.unwrap();
     assert_eq!(config.server.addr, "0.0.0.0:3000");
 }
@@ -30,10 +30,10 @@ routes:
 identity:
   api_key_store_path: "./api_keys.yaml"
 "#;
-    
+
     let config: Result<GatewayConfig, _> = serde_yaml::from_str(config_str);
     assert!(config.is_ok());
-    
+
     let config = config.unwrap();
     assert_eq!(config.server.addr, "0.0.0.0:8080");
     assert_eq!(config.routes.len(), 1);
@@ -49,10 +49,10 @@ routes: []
 identity:
   api_key_store_path: "./api_keys.yaml"
 "#;
-    
+
     let config: Result<GatewayConfig, _> = serde_yaml::from_str(config_str);
     assert!(config.is_ok());
-    
+
     let config = config.unwrap();
     // Test that basic structure is present
     assert!(config.routes.is_empty());

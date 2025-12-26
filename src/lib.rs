@@ -1,49 +1,47 @@
+pub mod app;
 pub mod config;
 pub mod errors;
-pub mod app;
-pub mod state;
-pub mod proxy;
-pub mod middleware;
 pub mod features;
-pub mod utils;
+pub mod middleware;
 pub mod plugins;
+pub mod proxy;
+pub mod state;
+pub mod utils;
 
-
-use std::{net::SocketAddr, path::PathBuf, sync::Arc,};
+use std::{net::SocketAddr, path::PathBuf, sync::Arc};
 
 use anyhow::Result;
-use axum_prometheus::{PrometheusMetricLayer};
+use axum_prometheus::PrometheusMetricLayer;
 use dotenvy::dotenv;
 use moka::future::Cache;
 use reqwest::Client;
 use tokio::{net::TcpListener, sync::RwLock};
-use tracing::{info, Level};
+use tracing::{Level, info};
 
-use crate::{config::{ApiKeyStore, GatewayConfig, SecretsConfig}, features::{circuit_breaker::circuit_breaker::CircuitBreakerStore, rate_limiter::state::{InMemoryRateLimitState, RateLimitState}}, utils::hot_reload};
 use crate::state::{AppState, CachedResponse};
+use crate::{
+    config::{ApiKeyStore, GatewayConfig, SecretsConfig},
+    features::{
+        circuit_breaker::circuit_breaker::CircuitBreakerStore,
+        rate_limiter::state::{InMemoryRateLimitState, RateLimitState},
+    },
+    utils::hot_reload,
+};
 
-pub async fn run(
-    config_path: PathBuf,
-) -> Result<()> {
-
-
+pub async fn run(config_path: PathBuf) -> Result<()> {
     dotenv().ok();
 
-    tracing_subscriber::fmt()
-    .with_max_level(Level::INFO)
-    .init();
+    tracing_subscriber::fmt().with_max_level(Level::INFO).init();
 
     info!("Loading secrets...");
     let secrets = Arc::new(SecretsConfig::from_env()?);
 
     info!("Loading gateway configuration...");
-    let config = Arc::new(RwLock::new(GatewayConfig::load(
-        config_path.clone(),
-    )?));
+    let config = Arc::new(RwLock::new(GatewayConfig::load(config_path.clone())?));
     info!("Configuration loaded successfully.");
 
-    let key_store_path   = config.read().await.identity.api_key_store_path.clone(); 
-    
+    let key_store_path = config.read().await.identity.api_key_store_path.clone();
+
     info!(path = ?key_store_path, "Loading API key store...");
 
     let key_store = Arc::new(RwLock::new(ApiKeyStore::load(&key_store_path)?));
@@ -58,18 +56,16 @@ pub async fn run(
 
     let (prometheus_layer, prometheus_handle) = {
         let config_guard = config.read().await;
-        if config_guard.observability.metrics.enabled{
+        if config_guard.observability.metrics.enabled {
             info!("Metrics reporting is enabled");
-            let (layer,handle)= PrometheusMetricLayer::pair();
+            let (layer, handle) = PrometheusMetricLayer::pair();
             (Some(layer), Some(handle))
-        }else{
+        } else {
             (None, None)
         }
     };
 
-    let circuit_breaker_store = Arc::new(
-        CircuitBreakerStore::new(),
-    );
+    let circuit_breaker_store = Arc::new(CircuitBreakerStore::new());
 
     let plugin_registry = Arc::new(plugins::PluginRegistry::new());
 
@@ -100,11 +96,15 @@ pub async fn run(
 
     let config_guard = config.read().await;
 
-    let addr  = config_guard.server.addr.clone();
+    let addr = config_guard.server.addr.clone();
 
     let listener = TcpListener::bind(&addr).await?;
     info!("Gateway listening on {}", &addr);
-    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>()).await?;
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await?;
 
     Ok(())
 }

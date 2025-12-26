@@ -2,8 +2,8 @@
 
 use std::{fs, path::PathBuf, sync::Arc};
 
-use notify::{ Event, RecommendedWatcher, RecursiveMode, Watcher};
-use tokio::sync::{mpsc, RwLock};
+use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
+use tokio::sync::{RwLock, mpsc};
 use tracing::{error, info};
 
 use crate::config::{ApiKeyStore, GatewayConfig};
@@ -11,15 +11,13 @@ use crate::config::{ApiKeyStore, GatewayConfig};
 pub async fn watch_config_files(
     config_path: PathBuf,
     gateway_config: Arc<RwLock<GatewayConfig>>,
-    api_key_store: Arc<RwLock<ApiKeyStore>>
+    api_key_store: Arc<RwLock<ApiKeyStore>>,
 ) {
-
     info!("Starting Configuration file watcher...");
 
-    let  api_key_store_path_rel = {
+    let api_key_store_path_rel = {
         let config_guard = gateway_config.read().await;
-         PathBuf::from(config_guard.identity.api_key_store_path.clone())
-        
+        PathBuf::from(config_guard.identity.api_key_store_path.clone())
     };
 
     let gateway_config_path = match fs::canonicalize(&config_path) {
@@ -36,7 +34,7 @@ pub async fn watch_config_files(
             return;
         }
     };
-    
+
     info!(gateway_config_path = ?gateway_config_path);
     info!(api_key_store_path = ?api_key_store_path);
 
@@ -45,13 +43,16 @@ pub async fn watch_config_files(
 
     let (tx, mut rx) = mpsc::channel(1);
 
-    let mut watcher: RecommendedWatcher = 
-        match Watcher::new(move |res:Result<Event, notify::Error>| {
+    let mut watcher: RecommendedWatcher = match Watcher::new(
+        move |res: Result<Event, notify::Error>| {
             if let Ok(event) = res
-                && (event.kind.is_modify() || event.kind.is_create()) {
-                    tx.blocking_send(event).expect("Failed to send file change event");
-                }
-        }, notify::Config::default()
+                && (event.kind.is_modify() || event.kind.is_create())
+            {
+                tx.blocking_send(event)
+                    .expect("Failed to send file change event");
+            }
+        },
+        notify::Config::default(),
     ) {
         Ok(w) => w,
         Err(e) => {
@@ -78,10 +79,12 @@ pub async fn watch_config_files(
                     let mut config_writer = gateway_config_clone.write().await;
                     *config_writer = new_config;
                     info!("Successfully reloaded gateway_config.yaml");
-
                 }
                 Err(e) => {
-                    error!("Failed to reload gateway_config.yaml: {}. Keeping old config.", e);
+                    error!(
+                        "Failed to reload gateway_config.yaml: {}. Keeping old config.",
+                        e
+                    );
                 }
             }
         }
@@ -98,6 +101,4 @@ pub async fn watch_config_files(
             }
         }
     }
-
-
 }

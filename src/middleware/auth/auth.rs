@@ -1,18 +1,26 @@
-use std::{sync::Arc};
+use std::sync::Arc;
 
-use axum::{extract::{Request, State}, middleware::Next, response::Response};
+use axum::{
+    extract::{Request, State},
+    middleware::Next,
+    response::Response,
+};
 
 use http::Uri;
 
-use crate::{config::RouteConfig, errors::AppError, features::auth::auth::{check_roles, verify_token}, state::AppState};
+use crate::{
+    config::RouteConfig,
+    errors::AppError,
+    features::auth::auth::{check_roles, verify_token},
+    state::AppState,
+};
 
 // axum middleware layer for authentication
-pub async fn layer (
+pub async fn layer(
     State(state): State<Arc<AppState>>,
     mut req: Request,
-    next: Next
-) -> Result<Response, AppError> 
-{
+    next: Next,
+) -> Result<Response, AppError> {
     let route = find_route_for_uri(req.uri(), state.clone()).await?;
 
     if let Some(auth_config) = &route.auth {
@@ -33,12 +41,10 @@ pub async fn layer (
     Ok(next.run(req).await)
 }
 
-async fn find_route_for_uri(uri: &Uri, state: Arc<AppState>) -> Result<Arc<RouteConfig>,AppError> {
-
+async fn find_route_for_uri(uri: &Uri, state: Arc<AppState>) -> Result<Arc<RouteConfig>, AppError> {
     let config_guard = state.config.read().await;
 
     config_guard
         .find_route_for_path(uri.path())
         .ok_or(AppError::RouteNotFound)
-    
 }

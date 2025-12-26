@@ -1,7 +1,7 @@
 //! Concurrency tests for race conditions and thread safety.
 
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 use tokio::sync::RwLock;
 use tokio::time::timeout;
@@ -147,7 +147,9 @@ async fn test_concurrent_cache_operations() {
         let cache = cache.clone();
         handles.push(tokio::spawn(async move {
             for j in 0..50 {
-                cache.insert(format!("key-{}-{}", i, j), format!("value-{}-{}", i, j)).await;
+                cache
+                    .insert(format!("key-{}-{}", i, j), format!("value-{}-{}", i, j))
+                    .await;
             }
         }));
     }
@@ -209,12 +211,11 @@ async fn test_concurrent_token_bucket() {
                 if current == 0 {
                     return false;
                 }
-                if self.tokens.compare_exchange(
-                    current,
-                    current - 1,
-                    Ordering::SeqCst,
-                    Ordering::Relaxed,
-                ).is_ok() {
+                if self
+                    .tokens
+                    .compare_exchange(current, current - 1, Ordering::SeqCst, Ordering::Relaxed)
+                    .is_ok()
+                {
                     return true;
                 }
             }

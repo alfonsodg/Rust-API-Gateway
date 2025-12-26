@@ -1,5 +1,5 @@
-use std::path::PathBuf;
 use rustway::run;
+use std::path::PathBuf;
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {

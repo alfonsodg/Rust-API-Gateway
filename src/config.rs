@@ -1,9 +1,7 @@
 use std::{collections::HashMap, fs, path::Path, sync::Arc};
 
 use anyhow::{Error, Ok};
-use serde::{Deserialize};
-
-
+use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct GatewayConfig {
@@ -16,7 +14,7 @@ pub struct GatewayConfig {
 
 #[derive(Debug, Deserialize)]
 pub struct ServerConfig {
-    pub addr: String
+    pub addr: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -32,15 +30,15 @@ pub enum AuthType {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct AuthConfig {
-    #[serde(rename="type")]
+    #[serde(rename = "type")]
     pub auth_type: AuthType,
     pub roles: Option<Vec<String>>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct RateLimitConfig{
+pub struct RateLimitConfig {
     pub requests: u64,
-    pub period: String
+    pub period: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -55,7 +53,7 @@ pub struct RouteConfig {
 }
 
 impl GatewayConfig {
-    pub fn load<P: AsRef<Path>> (path: P) -> Result<Self,anyhow::Error> {
+    pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, anyhow::Error> {
         let content = fs::read_to_string(path)?;
         let config: GatewayConfig = serde_yaml::from_str(&content)?;
         Ok(config)
@@ -67,12 +65,10 @@ impl GatewayConfig {
             .filter(|r| request_path.starts_with(&r.path))
             .max_by_key(|r| r.path.len())
             .cloned()
-           
     }
 }
 
 //       API key store condig    //
-
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ApiKeyStore {
@@ -99,8 +95,8 @@ impl ApiKeyStore {
 }
 
 //      Secrets Config
-pub struct SecretsConfig  {
-    pub jwt_secret: String
+pub struct SecretsConfig {
+    pub jwt_secret: String,
 }
 
 impl SecretsConfig {
@@ -112,13 +108,11 @@ impl SecretsConfig {
     }
 }
 
-
 // ----- Cache config  ----
 #[derive(Debug, Deserialize, Clone)]
 pub struct CacheConfig {
-    pub ttl: String  // 30s , 1m
+    pub ttl: String, // 30s , 1m
 }
-
 
 //------  Observability config ---------
 
@@ -134,8 +128,7 @@ pub struct MetricsConfig {
     pub enabled: bool,
 }
 
-
-//      ---- Circuit Breaker 
+//      ---- Circuit Breaker
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct CircuitBreakerConfig {

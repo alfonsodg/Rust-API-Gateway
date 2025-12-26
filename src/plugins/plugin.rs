@@ -25,7 +25,11 @@ pub struct PluginContext {
 
 impl PluginContext {
     pub fn new(route_path: String) -> Self {
-        Self { route_path, client_ip: None, metadata: std::collections::HashMap::new() }
+        Self {
+            route_path,
+            client_ip: None,
+            metadata: std::collections::HashMap::new(),
+        }
     }
 
     pub fn with_client_ip(mut self, ip: Option<String>) -> Self {
@@ -46,7 +50,9 @@ pub enum PluginPhase {
 pub trait Plugin: Send + Sync {
     fn name(&self) -> &str;
     fn phase(&self) -> PluginPhase;
-    fn priority(&self) -> i32 { 100 }
+    fn priority(&self) -> i32 {
+        100
+    }
 
     async fn on_request(
         &self,
@@ -64,7 +70,9 @@ pub trait Plugin: Send + Sync {
         Ok(response)
     }
 
-    fn is_enabled_for_route(&self, _route_path: &str) -> bool { true }
+    fn is_enabled_for_route(&self, _route_path: &str) -> bool {
+        true
+    }
 }
 
 pub type BoxedPlugin = Arc<dyn Plugin>;
