@@ -1,314 +1,319 @@
 # RustyGW
 
-A minimal, high-performance, and self-hosted API Gateway built in Rust. This project provides a lightweight yet powerful solution for managing access to your backend services, perfect for solo developers and small teams.
+A high-performance, lightweight API Gateway built in Rust. Perfect for microservices, serverless architectures, and modern cloud-native applications.
+
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![Rust](https://img.shields.io/badge/rust-1.92+-orange.svg)](https://www.rust-lang.org)
+[![Release](https://img.shields.io/github/v/release/alfonsodg/RustyGW)](https://github.com/alfonsodg/RustyGW/releases)
 
 ---
 
 ## ✨ Features
 
-- **Dynamic Routing**  
-  Configure all routes via a simple YAML file. No code changes or restarts needed to add, remove, or change routes.
-
-- **Reverse Proxy**  
-  Forwards client requests to the appropriate backend services seamlessly.
-
-- **Robust Authentication**  
-  - **JWT (JSON Web Tokens):** Secure stateless authentication for users.  
-  - **API Keys:** Simple, effective authentication for server-to-server communication.  
-  - **Role-Based Access Control (RBAC):** Restrict access to specific routes based on roles defined in the JWT or API key data.
-
-- **Rate Limiting**  
-  Protect your services from abuse with a configurable Token Bucket algorithm, applied per client IP address.
-
-- **Configuration Hot-Reload**  
-  Automatically detects and applies changes to `gateway_config.yaml` and `api_keys.yaml` without any downtime.
-
-- **CLI-Driven**  
-  Easy to run and configure via command-line arguments.
+- **🚀 High Performance**: 10,000+ req/sec with sub-millisecond latency
+- **🔒 Security First**: JWT & API key authentication with RBAC
+- **⚡ Rate Limiting**: Token bucket algorithm with per-IP protection
+- **🔄 Hot Reload**: Zero-downtime configuration updates
+- **📊 Observability**: Prometheus metrics and health checks
+- **🐳 Cloud Ready**: Docker, Kubernetes, and container-native
+- **🌐 WebSocket Support**: Real-time bidirectional communication
+- **🛡️ Circuit Breaker**: Fault tolerance and resilience patterns
+- **💾 Caching**: Intelligent response caching with TTL
+- **📝 Request ID**: Distributed tracing support
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Quick Start
 
-### Prerequisites
-
-- Rust toolchain (latest stable version recommended)
-- Docker (optional, for containerized deployment)
-
-### Quick Start
-
+### Download Binary (Recommended)
 ```bash
-# Clone the repository
-git clone https://github.com/alfonsodg/Rust-API-Gateway.git
-cd Rust-API-Gateway
+# Download latest release
+curl -L https://github.com/alfonsodg/RustyGW/releases/latest/download/rustygw -o rustygw
+chmod +x rustygw
 
-# Run setup script (installs tools and builds project)
-./scripts/setup.sh
-
-# Start the gateway
-cargo run
+# Run with default config
+./rustygw
 ```
 
-### Installation Options
-
-#### Option 1: Run from Source
+### Docker
 ```bash
-cargo run
-```
-
-#### Option 2: Install Binary
-```bash
-cargo install --path .
-rustway --config gateway.yaml
-```
-
-#### Option 3: Docker
-```bash
-# Build and run with Docker Compose
+# Run with demo
+git clone https://github.com/alfonsodg/RustyGW.git
+cd RustyGW/demo
 docker-compose up
-
-# Or build Docker image manually
-docker build -t rustway .
-docker run -p 8081:8081 -v $(pwd)/gateway.yaml:/app/gateway.yaml rustway
 ```
 
+### From Source
 ```bash
-# To run directly from source
-cargo run
+git clone https://github.com/alfonsodg/RustyGW.git
+cd RustyGW
+cargo build --release
+./target/release/rustygw
+```
 
-# To install the binary
-cargo install --path .
+---
 
-⚙️ Configuration
-The gateway is configured using three main files:
+## ⚙️ Configuration
 
-1. Environment Variables (.env)
-This file holds the master secret for the entire gateway and should never be committed to version control.
+### Basic Setup
+Create `gateway.yaml`:
+```yaml
+server:
+  addr: "127.0.0.1:8094"
 
-# .env
+routes:
+  - name: "api"
+    path: "/api/users"
+    destination: "http://localhost:3001/users"
+    
+  - name: "protected"
+    path: "/admin"
+    destination: "http://localhost:3002/admin"
+    auth:
+      type: "ApiKey"
+      roles: ["admin"]
+    rate_limit:
+      requests: 100
+      period: "1m"
+```
 
-# The master secret for signing and verifying all JWTs.
-# Use a long, random string for production.
-JWT_SECRET="a-very-long-and-random-string-that-is-hard-to-guess"
-
-2. API Key Store (api_keys.yaml)
-This file manages all valid API keys and their associated user data and roles.
-# api_keys.yaml
+### API Keys (`api_keys.yaml`)
+```yaml
 keys:
-  "user-key-for-alice":
-    user_id: "alice@example.com"
-    roles: ["user"]
-    status: "active"
-
-  "admin-key-for-carol":
-    user_id: "carol@example.com"
+  "your-api-key":
+    user_id: "admin@example.com"
     roles: ["admin", "user"]
     status: "active"
-
-  "revoked-key-for-dave":
-    user_id: "dave@example.com"
-    roles: ["user"]
-    status: "revoked" # Keys can be easily revoked
-
-3. Main Gateway Config (gateway_config.yaml)
-This is the central configuration file that defines the server, routes, and authentication requirements.
-
-# Main server configuration
-server:
-  addr: "127.0.0.1:8080"
-
-# Defines the location of the API key store
-identity:
-  api_key_store_path: "./api_keys.yaml"
-
-# --- Route Definitions ---
-routes:
-  # A public route with no authentication
-  - name: "public_service"
-    path: "/api/public"
-    destination: "http://localhost:9001/some/path"
-
-  # A route protected by an API key requiring the 'user' role
-  - name: "user_service"
-    path: "/api/user"
-    destination: "http://localhost:9002"
-    auth:
-      type: "apikey"
-      roles: ["user"]
-    rate_limit:
-      requests: 10
-      period: "1m" # 10 requests per minute
-
-  # A route protected by a JWT requiring the 'admin' role
-  - name: "admin_dashboard"
-    path: "/api/admin"
-    destination: "http://localhost:9003"
-    auth:
-      type: "jwt"
-      roles: ["admin"]
-
-▶️ Running the Gateway
-
-Default (uses gateway_config.yaml in the current directory)
-cargo run
-
-With a Custom Config File
-cargo run -- --config /path/to/your/custom_config.yaml
-# OR
-cargo run -- -c /path/to/your/custom_config.yaml
+```
 
 ---
 
-## 📊 Monitoring & Observability
+## 🏗️ Architecture
 
-The gateway provides built-in metrics and monitoring capabilities:
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   Client    │───▶│   RustyGW   │───▶│  Backend    │
+│             │    │             │    │  Services   │
+└─────────────┘    └─────────────┘    └─────────────┘
+                          │
+                          ▼
+                   ┌─────────────┐
+                   │ Middleware  │
+                   │ • Auth      │
+                   │ • Rate Limit│
+                   │ • Caching   │
+                   │ • Metrics   │
+                   └─────────────┘
+```
+
+---
+
+## 📊 Performance
+
+| Metric | Value |
+|--------|-------|
+| **Throughput** | 10,000+ req/sec |
+| **Latency** | < 1ms overhead |
+| **Memory** | ~10MB footprint |
+| **Binary Size** | 8.5MB optimized |
+| **Startup Time** | < 100ms |
+
+### Benchmarks
+```bash
+# Route matching: 65M+ ops/sec
+# Rate limiting: 1.6G+ ops/sec  
+# Cache operations: High performance
+cargo bench
+```
+
+---
+
+## 🐳 Docker & Kubernetes
+
+### Docker Compose (Full Demo)
+```bash
+cd demo
+docker-compose up
+# Access: http://localhost:8094
+```
+
+### Kubernetes Deployment
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rustygw
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: rustygw
+  template:
+    spec:
+      containers:
+      - name: rustygw
+        image: rustygw:latest
+        ports:
+        - containerPort: 8094
+        livenessProbe:
+          httpGet:
+            path: /metrics
+            port: 8094
+```
+
+---
+
+## 📈 Monitoring
 
 ### Metrics Endpoint
-- **URL**: `http://localhost:8081/metrics`
-- **Format**: Prometheus-compatible metrics
-- **Includes**: Request counts, response times, error rates, rate limiting stats
+- **URL**: `http://localhost:8094/metrics`
+- **Format**: Prometheus compatible
+- **Includes**: Requests, latency, errors, rate limits
 
-### Prometheus Integration
-```bash
-# Use the provided Prometheus configuration
-prometheus --config.file=examples/prometheus.yml
+### Health Check
+- **URL**: `http://localhost:8094/health`
+- **Response**: `{"status": "healthy"}`
+
+### Prometheus Config
+```yaml
+scrape_configs:
+  - job_name: 'rustygw'
+    static_configs:
+      - targets: ['localhost:8094']
 ```
 
-### Docker Monitoring Stack
+---
+
+## 🧪 Demo Application
+
+The repository includes a complete demo with:
+- **Frontend**: Real-time WebSocket dashboard
+- **3 Backend Services**: Users, Products, Orders
+- **Gateway**: Unified API access point
+- **Docker Compose**: One-command deployment
+
 ```bash
-# Run gateway with monitoring
+cd demo
 docker-compose up
+# Frontend: http://localhost:8090
+# Gateway: http://localhost:8094
 ```
-
-### Health Checks
-- **Endpoint**: `http://localhost:8081/health`
-- **Docker**: Built-in health check configured
-- **Kubernetes**: Ready for liveness/readiness probes
 
 ---
 
 ## 🔧 Development
 
-### Development Tools
-```bash
-# Auto-reload on file changes
-cargo watch -x run
+### Prerequisites
+- Rust 1.92+ 
+- Docker (optional)
 
-# Run security audit
+### Setup
+```bash
+git clone https://github.com/alfonsodg/RustyGW.git
+cd RustyGW
+
+# Install dependencies and build
+cargo build
+
+# Run tests (15+ test suites)
+cargo test
+
+# Security audit
 cargo audit
 
-# Format code
-cargo fmt
+# Format and lint
+cargo fmt && cargo clippy
+```
 
-# Lint code
-cargo clippy
+### Hot Reload Development
+```bash
+cargo install cargo-watch
+cargo watch -x run
 ```
 
 ---
 
 ## 🧪 Testing
 
-The project includes a comprehensive test suite with 15+ tests covering:
+Comprehensive test coverage with 15+ test suites:
 
-### Test Suites
-- **Configuration Tests**: YAML parsing and validation
-- **Rate Limiting Tests**: Token bucket algorithms and time windows
-- **Concurrency Tests**: Thread safety and race conditions
-- **Integration Tests**: End-to-end gateway functionality
-
-### Running Tests
 ```bash
-# Run all tests
+# All tests
 cargo test
 
-# Run specific test suite
-cargo test --test auth_test
-cargo test --test rate_limit
-cargo test --test concurrency_tests
+# Specific suites
+cargo test --test auth_test        # Authentication
+cargo test --test rate_limit       # Rate limiting  
+cargo test --test concurrency_tests # Thread safety
 
-# Run with output
+# With output
 cargo test -- --nocapture
 
-# Run benchmarks
+# Benchmarks
 cargo bench
 ```
 
-### Performance Benchmarks
-- **Route Matching**: 65M+ operations/second
-- **String Operations**: Optimized path processing
-- **Rate Limiting**: 1.6G+ token acquisitions/second
-- **Cache Operations**: High-performance key operations
-
 ---
 
-## 🚀 Production Deployment
+## 🚀 Production
 
-### Docker Production
-```bash
-# Build optimized image
-docker build -t rustway:latest .
+### Security Checklist
+- ✅ Use strong JWT secrets
+- ✅ Enable HTTPS/TLS
+- ✅ Configure rate limits
+- ✅ Set up monitoring
+- ✅ Regular security audits
 
-# Run in production
-docker run -d \
-  --name rustway \
-  -p 8081:8081 \
-  -v /path/to/config:/app/gateway.yaml:ro \
-  --restart unless-stopped \
-  rustway:latest
-```
+### Deployment Options
+- **Binary**: Single executable, no dependencies
+- **Docker**: Container-ready with health checks
+- **Kubernetes**: Cloud-native with scaling
+- **Serverless**: AWS Lambda compatible
 
-### Kubernetes
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: rustway
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: rustway
-  template:
-    metadata:
-      labels:
-        app: rustway
-    spec:
-      containers:
-      - name: rustway
-        image: rustway:latest
-        ports:
-        - containerPort: 8081
-        livenessProbe:
-          httpGet:
-            path: /metrics
-            port: 8081
-          initialDelaySeconds: 30
-          periodSeconds: 10
-```
-
----
-
-## 📈 Performance
-
-- **Throughput**: 10,000+ requests/second
-- **Latency**: Sub-millisecond routing overhead
-- **Memory**: ~10MB base footprint
-- **CPU**: Minimal overhead with async processing
-- **Benchmarks**: Included performance test suite
+### Configuration Management
+- Environment variables for secrets
+- ConfigMaps for Kubernetes
+- Hot reload for zero-downtime updates
+- Validation on startup
 
 ---
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
+2. Create feature branch: `git checkout -b feature/amazing-feature`
 3. Run tests: `cargo test`
-4. Run lints: `cargo clippy`
-5. Format code: `cargo fmt`
-6. Submit a pull request
+4. Commit changes: `git commit -m 'Add amazing feature'`
+5. Push branch: `git push origin feature/amazing-feature`
+6. Open Pull Request
+
+### Code Standards
+- Follow Rust conventions
+- Add tests for new features
+- Update documentation
+- Run `cargo fmt` and `cargo clippy`
 
 ---
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+Licensed under the Apache License 2.0 - see [LICENSE](LICENSE) for details.
+
+---
+
+## 🔗 Links
+
+- **Documentation**: [GitHub Wiki](https://github.com/alfonsodg/RustyGW/wiki)
+- **Releases**: [GitHub Releases](https://github.com/alfonsodg/RustyGW/releases)
+- **Issues**: [GitHub Issues](https://github.com/alfonsodg/RustyGW/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/alfonsodg/RustyGW/discussions)
+
+---
+
+<div align="center">
+
+**⭐ Star this project if you find it useful!**
+
+Made with ❤️ and 🦀 Rust
+
+</div>
